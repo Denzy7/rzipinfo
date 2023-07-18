@@ -1,9 +1,16 @@
 import requests
+import sys
 
-url = 'https://rms01.realme.net/sw/RMX3231_11.A.87_202208171849.zip'
-# url = 'http://localhost:8080/assgn.zip'
+try:
+    url = sys.argv[1]
+    print('zip url: ', url)
+except IndexError:
+    print('use argv[1] for zip url like:\npython rzipinfo.py http://example.com/example.zip')
+    exit(1)
+
 eocdr = b'PK\x05\x06'
 
+print('getting headers...')
 response = requests.head(url)
 length = int(response.headers['Content-Length'])
 print('file is ', length, ' bytes')

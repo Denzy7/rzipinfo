@@ -1,7 +1,7 @@
 import requests
-import sys
 import zlib
 import argparse
+import os
 parser = argparse.ArgumentParser(description="get info and extract remote zip (<4GB or 2^32-1, 32 bit only!) zip files")
 parser.add_argument("url", help="url for zip")
 parser.add_argument("-e", dest="extract", type=int,
@@ -44,11 +44,13 @@ print('retreiving cdr...')
 response = requests.get(args.url, headers={'Range': 'bytes=' + str(cdoffset) + '-' + str(cdoffset + cdsize)})
 
 sz_processed = 0
+store = 0
+deflate = 8
 for i in range(cdrecords):
     comprmeth =  int.from_bytes(response.content[sz_processed + 10 : sz_processed + 12], byteorder='little')
-    if comprmeth == 0:
+    if comprmeth == store:
         meth = "store"
-    elif comprmeth == 8:
+    elif comprmeth == deflate:
         meth = "deflate"
     else:
         meth = "unknown"
@@ -60,20 +62,24 @@ for i in range(cdrecords):
     off_lfh = int.from_bytes(response.content[sz_processed + 42: sz_processed + 46], byteorder='little')
 
     name = response.content[sz_processed + 46: sz_processed + 46 + sz_name].decode("utf-8")
+    basename = os.path.basename(name)
     print(i, name,
           "compressed:", sz_compr, "uncompressed:", sz_uncompr,
           "method:", meth, "off:", off_lfh)
     if i == args.extract:
-        if not meth == "deflate":
-            print("only deflate is implemented :(")
+        if meth == "unknown":
+            print("file compressed with unknown method :(")
         else:
             lfhr_pad = off_lfh + 30 + sz_name + sz_extra + 4
             bytereq = str(lfhr_pad) + '-' + str(lfhr_pad + sz_compr)
             print("asking server bytes", bytereq)
-            data = requests.get(args.url, headers={'Range': 'bytes=' + bytereq})
-            decomp = zlib.decompress(data.content, -15, sz_uncompr)
-            with open(name, "wb") as f:
-                f.write(decomp)
-                print("saved", name)
+            comp = requests.get(args.url, headers={'Range': 'bytes=' + bytereq})
+            decomp = comp
+            if meth == deflate:
+                decomp = zlib.decompress(comp.content, -15, sz_uncompr)
+            with open(basename, "wb") as f:
+                f.write(decomp.content)
+                print("saved", basename)
                 break
+
     sz_processed += 46 + sz_name + sz_extra + sz_comment

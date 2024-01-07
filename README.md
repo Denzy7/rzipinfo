@@ -1,2 +1,2 @@
 # rzipinfo
-get information from a remote zip archive
+get information and extract from a remote zip archive

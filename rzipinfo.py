@@ -74,11 +74,11 @@ for i in range(cdrecords):
             bytereq = str(lfhr_pad) + '-' + str(lfhr_pad + sz_compr)
             print("asking server bytes", bytereq)
             comp = requests.get(args.url, headers={'Range': 'bytes=' + bytereq})
-            decomp = comp
-            if meth == deflate:
+            decomp = comp.content
+            if comprmeth == deflate:
                 decomp = zlib.decompress(comp.content, -15, sz_uncompr)
             with open(basename, "wb") as f:
-                f.write(decomp.content)
+                f.write(decomp)
                 print("saved", basename)
                 break
 

@@ -12,8 +12,13 @@ args = parser.parse_args()
 
 eocdr = b'PK\x05\x06'
 
+headers={
+        'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Range':'bytes=0-'
+        }
+
 print('getting headers...')
-response = requests.head(args.url)
+response = requests.head(args.url, headers=headers)
 length = int(response.headers['Content-Length'])
 print('file is ', length, ' bytes')
 print('retreiving cdr(22 bytes)...')
@@ -26,7 +31,8 @@ print('retreiving cdr(22 bytes)...')
 
 # https://en.wikipedia.org/wiki/ZIP_(file_format)
 
-response = requests.get(args.url, headers={'Range': 'bytes=' + str(length-22) + '-' + str(length)})
+headers['Range'] = 'bytes=' + str(length-22) + '-' + str(length)
+response = requests.get(args.url, headers=headers)
 if eocdr != response.content[:4]:
     print('this is probably not a zip file')
     exit(1)
@@ -41,7 +47,9 @@ cdoffset = int.from_bytes(response.content[16:20], byteorder='little')
 print('cdr: records:', cdrecords, ',size:', cdsize, ',offset:', cdoffset)
 
 print('retreiving cdr...')
-response = requests.get(args.url, headers={'Range': 'bytes=' + str(cdoffset) + '-' + str(cdoffset + cdsize)})
+
+headers['Range'] = 'bytes=' + str(cdoffset) + '-' + str(cdoffset + cdsize)
+response = requests.get(args.url, headers=headers)
 
 sz_processed = 0
 store = 0
@@ -73,7 +81,8 @@ for i in range(cdrecords):
             lfhr_pad = off_lfh + 30 + sz_name + sz_extra + 4
             bytereq = str(lfhr_pad) + '-' + str(lfhr_pad + sz_compr)
             print("asking server bytes", bytereq)
-            comp = requests.get(args.url, headers={'Range': 'bytes=' + bytereq})
+            headers['Range'] = 'bytes=' + bytereq
+            comp = requests.get(args.url, headers=headers)
             decomp = comp.content
             if comprmeth == deflate:
                 decomp = zlib.decompress(comp.content, -15, sz_uncompr)
